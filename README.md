@@ -1,7 +1,3 @@
-<p align="center">
-  <img src=".github/logo.png" width="300" height="175" alt="Code Demo">
-</p>
-
 <h3 align="center">Code Demo</h3>
 
 ## About
@@ -23,10 +19,6 @@
     <li>Protection against SQL injection (SQLi), Cross-Site Scripting (XSS), etc. using appropriate ColdFusion
         tags and functions (ie, cfqueryparam, canonicalize, regular expressions, etc.)</li>
 </ol>
-
-## What's included
-
-
 
 ## Copyright
 

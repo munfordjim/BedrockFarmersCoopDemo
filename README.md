@@ -20,7 +20,8 @@
         tags and functions (ie, cfqueryparam, canonicalize, regular expressions, etc.)</li>
 </ol>
 
-<p class="p-2">The idea of the demo and the use of node came from https://github.com/twbs/bootstrap-npm-starter.  Much thanks! </p>
+<p class="p-2">The idea of the demo and the use of node came from https://github.com/twbs/bootstrap-npm-starter.  Much thanks!  The file called "bfc_tables.sql" are the MS SQL Server tables used to run this demo app.
+</p>
 
 # Usage
 

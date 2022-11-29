@@ -1,138 +1,189 @@
-<cfcomponent displayname="farmerBean" output="false" hint="the bean farmerBean">
+component displayname="farmerBean" output="false" hint="the bean farmerBean"
+{
+	property name="farmerID" type="numeric" default=0;
+    property name="firstName" type="string" default="";
+    property name="lastName" type="string" default="";
+    property name="emailAddress" type="string" default="";
+    property name="phoneNumber" type="string" default="";
 
-	<cfproperty name="farmerID" type="numeric" default=0 />
-    <cfproperty name="firstName" type="string" default="" />
-    <cfproperty name="lastName" type="string" default="" />
-    <cfproperty name="emailAddress" type="string" default="" />
-    <cfproperty name="phoneNumber" type="string" default="" />
+    // Pseudo-Constructor  --->
+    variables.instance = { farmerID=0, firstName='', lastName='', emailAddress='', phoneNumber='' };
 
-    <!--- Pseudo-Constructor  --->
-    <cfset variables.instance = { farmerID=0, firstName='', lastName='', emailAddress='', phoneNumber='' } /> 
+    // CREATE a new farmer record
+    public any function createNewFarmerRecord( required logic.bean.farmerBean bean )
+    {
+        nextFarmerID = 0;
 
-    <!---  CREATE New Farmer Record --->
-    <cffunction name="createNewFarmerRecord" access="public" output="false" hint="creates a new farmer record and returns a farmerBean">
-        <cfargument name="bean" required="true" type="logic.bean.farmerBean" hint="farmerBean" />
-        <cfset nextFarmerID = 0 />
-        
-        <!--- Get next FarmerID --->        
-        <cfquery name="qNextID" datasource="ncc-web" dbtype="oledb">
-            SELECT MAX(FarmerID) + 1 'Next_FarmerID'
-            FROM bfc_Farmer
-        </cfquery>
+        try 
+        {
+            sql = "SELECT MAX(FarmerID) + 1 'Next_FarmerID' FROM bfc_Farmer;"
+            strParams = {};
+            strOptions = {datasource=application.datasource};
+            qNextID = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            throw( type="custom", message="Error in createNewFarmerRecord - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
 
-        <cfif qNextID.Next_FarmerID neq "">
-            <cfset nextFarmerID = #qNextID.Next_FarmerID#>
-        <cfelse>
-            <cfset nextFarmerID = 1>
-        </cfif>        
-        
-        <cfquery name="qInsert" datasource="ncc-web" result="newRecord">
-            SET QUOTED_IDENTIFIER ON
-            INSERT INTO bfc_Farmer (FarmerID, FirstName, LastName, EmailAddress, PhoneNumber)
-            VALUES (
-            <cfqueryparam value="#nextFarmerID#" cfsqltype="CF_SQL_NUMERIC" />,
-            <cfqueryparam value="#arguments.bean.getFirstName()#" cfsqltype="CF_SQL_VARCHAR" />,
-            <cfqueryparam value="#arguments.bean.getLastName()#" cfsqltype="CF_SQL_VARCHAR" />,            
-            <cfqueryparam value="#arguments.bean.getEmailAddress()#" cfsqltype="CF_SQL_VARCHAR" />,            
-            <cfqueryparam value="#arguments.bean.getPhoneNumber()#" cfsqltype="CF_SQL_VARCHAR" />)
-            SET QUOTED_IDENTIFIER OFF
-        </cfquery>
-            
-        <cfreturn getRecordByFarmerID(nextFarmerID) />
-    </cffunction>
+        if ( qNextID.Next_FarmerID neq "" )
+        {
+            nextFarmerID = #qNextID.Next_FarmerID#;
+        }
+        else
+        {
+            nextFarmerID = 1;
+        }
 
-    <!---  READ Farmer Record --->
-    <cffunction name="getRecordByFarmerID" access="public" output="false" hint="Returns a record from the database by farmerID">
-        <cfargument name="farmerID" required="true" type="numeric" hint="Farmer ID" />
-        <cfquery name="qResult" datasource="ncc-web">
-            SET QUOTED_IDENTIFIER ON
-            SELECT FarmerID, FirstName, LastName, EmailAddress, PhoneNumber
-            FROM bfc_Farmer
-            WHERE FarmerID = <cfqueryparam value="#arguments.farmerID#" cfsqltype="CF_SQL_NUMERIC" />
-            SET QUOTED_IDENTIFIER OFF            
-        </cfquery>
-        <!---<cfqueryparam value="#arguments.farmerID#" cfsqltype="CF_SQL_NUMERIC" />--->
-        <cfif qResult.RecordCount>
-            <cfset objFarmerBean = createObject('component', "logic.bean.farmerBean").init(
+        try 
+        {
+            sql = "SET QUOTED_IDENTIFIER ON;";
+            sql = sql & "INSERT INTO bfc_Farmer (FarmerID, FirstName, LastName, EmailAddress, PhoneNumber)
+                        VALUES (:farmerID, :firstName, :lastName, :emailAddress, :phoneNumber);";
+            var strParams = {
+                farmerID = { value = #nextFarmerID#, cfsqltype="CF_SQL_VARCHAR" },
+                firstName = { value = #arguments.bean.getFirstName()#, cfsqltype="CF_SQL_VARCHAR"},
+                lastName = { value = #arguments.bean.getLastName()#, cfsqltype="CF_SQL_VARCHAR"},
+                emailAddress = { value = #arguments.bean.getEmailAddress()#, cfsqltype="CF_SQL_VARCHAR"},
+                phoneNumber = { value = #arguments.bean.getPhoneNumber()#, cfsqltype="CF_SQL_VARCHAR"}
+            }
+            strOptions = {datasource=application.datasource};
+            qInsert = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            throw( type="custom", message="Error in createNewFarmerRecord - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+
+        return getRecordByFarmerID(nextFarmerID);
+    }
+
+
+     //  READ Farmer Record 
+     public any function getRecordByFarmerID( required numeric farmerID )
+     {
+        try 
+        {
+            sql = "SET QUOTED_IDENTIFIER ON;";
+            sql = "SELECT FarmerID, FirstName, LastName, EmailAddress, PhoneNumber
+                    FROM bfc_Farmer
+                    WHERE FarmerID = :farmerID;";
+            strParams = {farmerID = { value = #nextFarmerID#, cfsqltype="CF_SQL_VARCHAR" }};
+            strOptions = {datasource=application.datasource};
+            qResult = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            throw( type="custom", message="Error in getRecordByFarmerID - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+
+        if ( qResult.RecordCount )
+        {
+            objFarmerBean = createObject('component', "logic.bean.farmerBean").init(
                 farmerID = #qResult.FarmerID#, 
                 firstName = "#qResult.FirstName#", 
                 lastName = "#qResult.LastName#", 
                 emailAddress = "#qResult.EmailAddress#", 
-                phoneNumber = "#qResult.PhoneNumber#") />  
-        </cfif>
-        <cfreturn objFarmerBean />
-    </cffunction>
+                phoneNumber = "#qResult.PhoneNumber#");
+        }
 
-    <!---  UPDATE Farmer Record --->
-    <cffunction name="updateFarmerRecord" access="public" output="false" returntype="boolean" hint="Updates an farmer's record">
-        <cfargument name="bean" required="true" type="logic.bean.farmerBean" hint="farmerBean" />
-        <cfset var boolSuccess = true />
-        <cftry>
-            <cfquery name="qUpdate" datasource="ncc-web">
-                UPDATE bfc_Farmer
-                set FirstName = <cfqueryparam value="#arguments.bean.getFirstName()#" cfsqltype="CF_SQL_VARCHAR" />,
-                    LastName = <cfqueryparam value="#arguments.bean.getLastName()#" cfsqltype="CF_SQL_VARCHAR" />,            
-                    EmailAddress = <cfqueryparam value="#arguments.bean.getEmailAddress()#" cfsqltype="CF_SQL_VARCHAR" />,            
-                    PhoneNumber = <cfqueryparam value="#arguments.bean.getPhoneNumber()#" cfsqltype="CF_SQL_VARCHAR" />
-                WHERE FarmerID = <cfqueryparam value="#arguments.bean.getFarmerID()#" cfsqltype="CF_SQL_NUMERIC" />
-            </cfquery>
-        <cfcatch type="Database">
-            <cfset boolSucess = false />    
-        </cfcatch>
-        </cftry>
-        <cfreturn boolSuccess />
-    </cffunction>
+        return objFarmerBean;
+    }
 
+    //  UPDATE Farmer Record 
+    public boolean function updateFarmerRecord( required logic.bean.farmerBean bean )
+    {
+        var boolSuccess = true;
 
-    <!---  DELETE Farmer Record --->
-    <cffunction name="deleteFarmerRecordByFarmerID" access="public" output="false" returntype="boolean" hint="Deletes a farmer's record">
-        <cfargument name="farmerID" required="true" type="numeric" hint="Farmer ID" />
-        <cfset var boolSuccess = true />
-        <!--- Delete the Farmer --->
-        <cftry>
-            <cfquery name="qDeleteFarmer" datasource="ncc-web">
-                DELETE FROM bfc_Farmer
-                WHERE FarmerID = <cfqueryparam value="#arguments.farmerID#" cfsqltype="CF_SQL_NUMERIC" />
-            </cfquery>
-        <cfcatch type="Database">
-            <cfset boolSucess = false />    
-        </cfcatch>
-        </cftry>
+        try 
+        {
+            sql = "UPDATE bfc_Farmer ";
+            sql = sql & "SET FirstName = :firstName, ";
+            sql = sql & "LastName = :lastName, ";
+            sql = sql & "EmailAddress = :emailAddress, ";
+            sql = sql & "PhoneNumber = :phoneNumber ";
+            sql = sql & "WHERE FarmerID = :farmerID;";
 
-        <!--- Delete the Farmer-Address map --->
-        <cftry>
-            <cfquery name="qDeleteMap" datasource="ncc-web">
-                DELETE FROM bfc_Farmer_Address_Map
-                WHERE FarmerID = <cfqueryparam value="#arguments.farmerID#" cfsqltype="CF_SQL_NUMERIC" />
-            </cfquery>
-        <cfcatch type="Database">
-            <cfset boolSucess = false />    
-        </cfcatch>
-        </cftry>      
+            strParams = {firstName = { value = #arguments.bean.getFirstName()#, cfsqltype="CF_SQL_VARCHAR" },
+                        lastName = { value = #arguments.bean.getLastName()#, cfsqltype="CF_SQL_VARCHAR" },
+                        emailAddress = { value = #arguments.bean.getEmailAddress()#, cfsqltype="CF_SQL_VARCHAR" },
+                        phoneNumber = { value = #arguments.bean.getPhoneNumber()#, cfsqltype="CF_SQL_VARCHAR" },
+                        farmerID = { value = #arguments.bean.getFarmerID()#, cfsqltype="CF_SQL_NUMERIC" }};
+            strOptions = {datasource=application.datasource};
+            qResult = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            boolSuccess = false;
+            throw( type="custom", message="Error in updateFarmerRecord - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
 
-        <cfreturn boolSuccess />        
-    </cffunction>
+        return boolSuccess;
+    }
 
-    <!---  READ Farmer and Address info based on the farmerID, populate an addressBean and return it --->
-    <cffunction name="getFarmerAndAddressByFarmerID" access="public" output="false" hint="Returns an populated address bean">
-        <cfargument name="farmerID" required="true" type="numeric" hint="Farmer ID" />
-        <cfquery name="qResult" datasource="ncc-web">
-            SELECT f.FarmerID, RTRIM(f.FirstName) 'FirstName', RTRIM(f.LastName) 'LastName', RTRIM(f.EmailAddress) 'EmailAddress', RTRIM(f.PhoneNumber) 'PhoneNumber',
+    //  DELETE Farmer Record
+    public boolean function deleteFarmerRecordByFarmerID( required numeric farmerID )
+    {
+        var boolSuccess = true;
+        // Delete the Farmer 
+        try 
+        {
+            sql = "DELETE FROM bfc_Farmer WHERE FarmerID = :farmerID;";
+            strParams = { farmerID = { value=arguments.farmerID, cfsqltype="CF_SQL_NUMERIC"}};
+            strOptions = {datasource=application.datasource};
+            qDeleteFarmer = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            boolSuccess = false;
+            throw( type="custom", message="Error in deleteFarmerRecordByFarmerID - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+        // Delete the Farmer-Address map 
+        try 
+        {
+            sql = "DELETE FROM bfc_Farmer_Address_Map WHERE FarmerID = :farmerID;";
+            strParams = { farmerID = { value=arguments.farmerID, cfsqltype="CF_SQL_NUMERIC"}};
+            strOptions = {datasource=application.datasource};
+            qDeleteMap = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            boolSuccess = false;
+            throw( type="custom", message="Error in deleteFarmerRecordByFarmerID - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+
+        return boolSuccess;
+    }
+
+    //  READ Farmer and Address info based on the farmerID, populate an addressBean and return it 
+    public any function getFarmerAndAddressByFarmerID( required numeric farmerID )
+    {
+        try 
+        {
+            sql = "SELECT f.FarmerID, RTRIM(f.FirstName) 'FirstName', RTRIM(f.LastName) 'LastName', RTRIM(f.EmailAddress) 'EmailAddress', RTRIM(f.PhoneNumber) 'PhoneNumber',
                     a.AddrID, RTRIM(a.AddressLine1) 'AddressLine1', RTRIM(a.City) 'City', RTRIM(a.State) 'State', RTRIM(a.Zip) 'Zip'
-            FROM bfc_Farmer f, bfc_Address a, bfc_Farmer_Address_Map m
-            WHERE f.FarmerID = m.FarmerID
-            AND a.AddrID = m.AddrID
-            AND m.FarmerID = <cfqueryparam value="#arguments.farmerID#" cfsqltype="CF_SQL_NUMERIC" />
-        </cfquery>
+                    FROM bfc_Farmer f, bfc_Address a, bfc_Farmer_Address_Map m
+                    WHERE f.FarmerID = m.FarmerID
+                    AND a.AddrID = m.AddrID
+                    AND m.FarmerID = :farmerID;";
 
-        <!--- Instantiate an addressBean and populate it --->
-        <cfset objAddressBean = createObject("component", "logic.dao.addressDAO").getRecordByAddrID(#qResult.AddrID#) />
-        <cfset objAddressBean.setFarmerID(#qResult.FarmerID#) />
-        <cfset objAddressBean.setFirstName(#qResult.FirstName#) />        
-        <cfset objAddressBean.setLastName(#qResult.LastName#) />
-        <cfset objAddressBean.setEmailAddress(#qResult.EmailAddress#) />
-        <cfset objAddressBean.setPhoneNumber(#qResult.PhoneNumber#) />
+            strParams = {farmerID = { value = #arguments.farmerID#, cfsqltype="CF_SQL_NUMERIC" }};
+            strOptions = {datasource=application.datasource};
+            qResult = queryExecute(sql, strParams, strOptions);
+        } 
+        catch( any e )
+        {
+            throw( type="custom", message="Error in getFarmerAndAddressByFarmerID - farmerDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
 
-        <cfreturn objAddressBean />
-    </cffunction>    
-</cfcomponent>
+        // Instantiate an addressBean and populate it 
+        objAddressBean = createObject("component", "logic.dao.addressDAO").getRecordByAddrID(#qResult.AddrID#);
+        objAddressBean.setFarmerID(#qResult.FarmerID#);
+        objAddressBean.setFirstName(#qResult.FirstName#);
+        objAddressBean.setLastName(#qResult.LastName#);
+        objAddressBean.setEmailAddress(#qResult.EmailAddress#);
+        objAddressBean.setPhoneNumber(#qResult.PhoneNumber#);
+
+        return objAddressBean;
+    }
+}

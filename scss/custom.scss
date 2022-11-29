@@ -1,5 +1,6 @@
-//  MUST import the functions file first before setting new custom color vars
-@import "bootstrap/scss/functions";
+// Custom.scss
+
+@import "bootstrap/scss/functions"; //  MUST import the functions file first before setting new custom color vars
 
 //  New custom colors
 $darkGreen: #226432; 

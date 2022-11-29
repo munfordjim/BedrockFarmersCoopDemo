@@ -1,135 +1,196 @@
-<cfcomponent displayname="addressDAO - used for CRUD - single records." output="true" hint="DAO class addressDAO" >
-	<cfproperty name="addrID" type="numeric" />
-    <cfproperty name="addressLine1" type="string" />
-    <cfproperty name="city" type="string" default="" />
-    <cfproperty name="state" type="string" default="" />
-    <cfproperty name="zip" type="string" default="" />
+component displayname="addressDAO - used for CRUD - single records." output="true" hint="DAO class addressDAO" 
+{
+	property name="addrID" type="numeric" default="0" ;
+    property name="addressLine1" type="string" default="" ;
+    property name="city" type="string" default="";
+    property name="state" type="string" default="";
+    property name="zip" type="string" default="";    
 
-    <!--- Pseudo-Constructor  --->
-    <cfset variables.instance = { addrID=0, addressLine1='', city='', state='', zip='' } />    
+    // Pseudo-Constructor  --->
+    variables.instance = { addrID=0, addressLine1='', city='', state='', zip='' } ;
+
+    public any function createNewAddressRecord( required logic.bean.addressBean bean )
+    {
+        // Add the Farmer, first 
+        // Instantiate the farmer manager 
+        farmerManager = createobject("component","logic.manager.farmerManager");
+
+        // Instantiate a farmer bean and load it up 
+        objFarmerBean = createObject("component", "logic.bean.farmerBean").init();
+        objFarmerBean.setFirstName("#bean.getFirstName()#");
+        objFarmerBean.setLastName("#bean.getLastName()#");                        
+        objFarmerBean.setEmailAddress("#bean.getEmailAddress()#");
+        objFarmerBean.setPhoneNumber("#bean.getPhoneNumber()#");        
+        
+        // Call the create method of the farmer manager, which adds the farmer and returns a farmer bean 
+        newFarmerBean = 0;
+        newFarmerBean = farmerManager.create(objFarmerBean);
+
+        // Now add the address 
+        nextAddrID = 0;
+
+        // First, get next AddrID 
+        try 
+        {
+            sql = "SELECT MAX(AddrID) + 1 'Next_AddrID' FROM bfc_Address";
+            strParams = {};
+            strOptions = {datasource=application.datasource};
     
-    <!---  CREATE New Address Record --->
-    <cffunction name="createNewAddressRecord" access="public" output="false" hint="creates a new addrID">
-        <cfargument name="bean" required="true" type="logic.bean.addressBean" hint="addressBean" />
-        <!--- Add the Farmer, first --->
-        <!--- Instantiate the farmer manager --->
-        <cfset farmerManager = createobject("component","logic.manager.farmerManager")>
+            qNextID = queryExecute(sql, strParams, strOptions );
+    
+            if (qNextID.Next_AddrID neq "" )    
+            {
+                nextAddrID = #qNextID.Next_AddrID#;
+            }
+            else
+            {
+                nextAddrID = 1;
+            }
+            
+            var sql = "SET QUOTED_IDENTIFIER ON;";
+            sql = sql & " INSERT INTO bfc_Address ( AddrID, AddressLine1, City, State, Zip ) VALUES ( :addrID, :addressLine1, :city, :state, :zip );";
+            sql = sql & "SET QUOTED_IDENTIFIER OFF";
+    
+            var strParams = {
+                addrID   = { value = #nextAddrID#, cfsqltype="cf_sql_numeric" },
+                addressLine1 = { value = #arguments.bean.getAddressLine1()#, cfsqltype="cf_sql_varchar" },
+                city = { value = #arguments.bean.getCity()#, cfsqltype="cf_sql_varchar" },
+                state = { value = #arguments.bean.getState()#, cfsqltype="cf_sql_varchar" },
+                zip = { value = #arguments.bean.getZip()#, cfsqltype="cf_sql_varchar" }
+            };
+            
+            strOptions = {datasource=application.datasource};
+    
+            QueryExecute( sql, strParams, strOptions );              
+        } 
+        catch( any e)
+        {
+            throw( type="custom", message="Error in createNewAddressRecord - addressDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
 
-        <!--- Instantiate a farmer bean and load it up --->
-        <cfset objFarmerBean = createObject("component", "logic.bean.farmerBean").init() />
-        <cfset objFarmerBean.setFirstName("#bean.getFirstName()#") />
-        <cfset objFarmerBean.setLastName("#bean.getLastName()#") />                        
-        <cfset objFarmerBean.setEmailAddress("#bean.getEmailAddress()#") />
-        <cfset objFarmerBean.setPhoneNumber("#bean.getPhoneNumber()#") />                        
-        
-        <!--- Call the create method of the farmer manager, which adds the farmer and returns a farmer bean --->
-        <cfset newFarmerBean = 0 />
-        <cfset newFarmerBean = farmerManager.create(objFarmerBean) />
 
-        <!--- Now add the address --->
-        <cfset nextAddrID = 0 />
-        
-        <!--- First, get next AddrID --->        
-        <cfquery name="qNextID" datasource="ncc-web" dbtype="oledb">
-            SELECT MAX(AddrID) + 1 'Next_AddrID'
-            FROM bfc_Address
-        </cfquery>
 
-        <cfif qNextID.Next_AddrID neq "">
-            <cfset nextAddrID = #qNextID.Next_AddrID#>
-        <cfelse>
-            <cfset nextAddrID = 1>
-        </cfif>        
-        
-        <cfquery name="qInsert" datasource="ncc-web" result="newRecord">
-            SET QUOTED_IDENTIFIER ON
-            INSERT INTO bfc_Address (AddrID, AddressLine1, City, State, Zip)
-            VALUES (
-            <cfqueryparam value="#nextAddrID#" cfsqltype="CF_SQL_NUMERIC" />,
-            <cfqueryparam value="#arguments.bean.getAddressLine1()#" cfsqltype="CF_SQL_VARCHAR" />,
-            <cfqueryparam value="#arguments.bean.getCity()#" cfsqltype="CF_SQL_VARCHAR" />,            
-            <cfqueryparam value="#arguments.bean.getState()#" cfsqltype="CF_SQL_VARCHAR" />,            
-            <cfqueryparam value="#arguments.bean.getZip()#" cfsqltype="CF_SQL_VARCHAR" />)
-            SET QUOTED_IDENTIFIER OFF
-        </cfquery>
-
-        <!---  
+        /*
             Now we need to map the farmer to the address.  Use the farmer ID that came back from the call to the farmerManager create
             method and the addr ID above to map the farmer and the address together.
-        --->
-        <cfquery name="qAddMapping" datasource="ncc-web" result="newRecord">
-            INSERT INTO bfc_Farmer_Address_Map (FarmerID, AddrID)
-            VALUES ( #newFarmerBean.getFarmerID()#, #nextAddrID# )
-        </cfquery>
-
-        <cfset newAddressBean = "" />
-        <cfset newAddressBean = getRecordByAddrID(#nextAddrID#) />
-        <cfset newAddressBean.setFarmerID(#newFarmerBean.getFarmerID()#) />
-        <cfset newAddressBean.setFirstName(#newFarmerBean.getFirstName()#) />        
-        <cfset newAddressBean.setLastName(#newFarmerBean.getLastName()#) />        
-        <cfset newAddressBean.setEmailAddress(#newFarmerBean.getEmailAddress()#) />        
-        <cfset newAddressBean.setPhoneNumber(#newFarmerBean.getPhoneNumber()#) />
-
-        <cfreturn  newAddressBean />
-    </cffunction>
-
+        */
+        try 
+        {
+            sql = " INSERT INTO bfc_Farmer_Address_Map ( FarmerID, AddrID ) VALUES ( :farmerID, :addrID );";
+            var strParams = {
+                farmerID = { value = #newFarmerBean.getFarmerID()#, cfsqltype="cf_sql_numeric" },
+                addrID = { value = #nextAddrID#, cfsqltype="cf_sql_varchar" }
+            }
+            
+            strOptions = {datasource=application.datasource};
     
-    <!---  READ Address Record --->
-    <cffunction name="getRecordByAddrID" access="public" output="false" hint="Returns a record from the database by addrID">
-        <cfargument name="addrID" required="true" type="numeric" hint="Address ID" />
-        <cfquery name="qResult" datasource="ncc-web">
-            SET QUOTED_IDENTIFIER ON
-            SELECT AddrID, AddressLine1, City, State, Zip
-            FROM bfc_Address
-            WHERE AddrID = <cfqueryparam value="#arguments.addrID#" cfsqltype="CF_SQL_NUMERIC" />
-            SET QUOTED_IDENTIFIER OFF
-        </cfquery>
-        <cfif qResult.RecordCount>
-            <cfset objAddressBean = createObject('component', "logic.bean.addressBean").init(
+            qAddMapping = queryExecute(sql, strParams, strOptions);              
+        } 
+        catch( any e )
+        {
+            throw( type="custom", message="Error in createNewAddressRecord - addressDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+
+        newAddressBean = "";
+        newAddressBean = getRecordByAddrID(#nextAddrID#);
+        newAddressBean.setFarmerID(#newFarmerBean.getFarmerID()#);
+        newAddressBean.setFirstName(#newFarmerBean.getFirstName()#);
+        newAddressBean.setLastName(#newFarmerBean.getLastName()#);
+        newAddressBean.setEmailAddress(#newFarmerBean.getEmailAddress()#);
+        newAddressBean.setPhoneNumber(#newFarmerBean.getPhoneNumber()#);
+
+        return  newAddressBean;
+    }
+
+    //  READ Address Record 
+    public any function getRecordByAddrID( required numeric addrID )
+    {
+        try 
+        {            
+            var sql = "SET QUOTED_IDENTIFIER ON;";
+            sql = sql & "SELECT AddrID, AddressLine1, City, State, Zip
+                        FROM bfc_Address
+                        WHERE AddrID = :addrID;";
+            sql = sql & "SET QUOTED_IDENTIFIER OFF";
+    
+            var strParams = {
+                addrID = { value = #arguments.addrID#, cfsqltype="CF_SQL_NUMERIC" }
+            }
+            strOptions = {datasource=application.datasource};
+    
+            qResult = queryExecute(sql, strParams, strOptions);            
+        } 
+        catch( any e )
+        {
+            throw( type="custom", message="Error in getRecordByAddrID - addressDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+
+        if ( qResult.RecordCount )
+        {
+            objAddressBean = createObject('component', "logic.bean.addressBean").init(
                 addrID = #qResult.AddrID#, 
                 addressLine1 = "#qResult.AddressLine1#", 
                 city = "#qResult.City#", 
                 state = "#qResult.State#", 
-                zip = "#qResult.Zip#") />  
-        </cfif>
-        <cfreturn objAddressBean />
-    </cffunction>
+                zip = "#qResult.Zip#");  
+        }
 
+        return objAddressBean;
+    }
     
-    <!---  UPDATE Address Record --->
-    <cffunction name="updateAddressRecord" access="public" output="false" returntype="boolean" hint="Updates an address record">
-        <cfargument name="bean" required="true" type="logic.bean.addressBean" hint="addressBean" />
-        <cfset var boolSuccess = true />
-        <cftry>
-            <cfquery name="qUpdate" datasource="ncc-web">
-                UPDATE bfc_Address
-                set AddressLine1 = <cfqueryparam value="#arguments.bean.getAddressLine1()#" cfsqltype="CF_SQL_VARCHAR" />,
-                    City = <cfqueryparam value="#arguments.bean.getCity()#" cfsqltype="CF_SQL_VARCHAR" />,            
-                    State = <cfqueryparam value="#arguments.bean.getState()#" cfsqltype="CF_SQL_VARCHAR" />,            
-                    Zip = <cfqueryparam value="#arguments.bean.getZip()#" cfsqltype="CF_SQL_VARCHAR" />
-                WHERE AddrID = <cfqueryparam value="#arguments.bean.getAddrID()#" cfsqltype="CF_SQL_NUMERIC" />
-            </cfquery>
-        <cfcatch type="Database">
-            <cfset boolSucess = false />    
-        </cfcatch>
-        </cftry>
-        <cfreturn boolSuccess />
-    </cffunction>
+    //  UPDATE Address Record 
+    public boolean function updateAddressRecord ( required logic.bean.addressBean bean )
+    {
+        var boolSuccess = true;
 
+        try 
+        {
+
+            sql = "UPDATE bfc_Address ";
+            sql = sql & "SET AddressLine1 = :addressLine1, ";
+            sql = sql & "City = :city, ";
+            sql = sql & "State = :state, ";
+            sql = sql & "Zip = :zip ";
+            sql = sql & "WHERE AddrID = :addrID ;"; 
     
-    <!---  DELETE Address Record --->
-    <cffunction name="deleteAddressRecordByAddrID" access="public" output="false" returntype="boolean" hint="Deletes an address record">
-        <cfargument name="addrID" required="true" type="numeric" hint="Address ID" />
-        <cfset var boolSuccess = true />
-        <cftry>
-            <cfquery name="qDeleteAddress" datasource="ncc-web">
-                DELETE FROM bfc_Address
-                WHERE AddrID = <cfqueryparam value="#arguments.addrID#" cfsqltype="CF_SQL_NUMERIC" />
-            </cfquery>
-        <cfcatch type="Database">
-            <cfset boolSucess = false />    
-        </cfcatch>
-        </cftry>
-        <cfreturn boolSuccess />        
-    </cffunction>
-</cfcomponent>
+            var strParams = {
+                addressLine1 = { value = #arguments.bean.getAddressLine1()#, cfsqltype="CF_SQL_VARCHAR" },
+                city = { value = #arguments.bean.getCity()#, cfsqltype="CF_SQL_VARCHAR"},
+                state = { value = #arguments.bean.getState()#, cfsqltype="CF_SQL_VARCHAR"},
+                zip = { value = #arguments.bean.getZip()#, cfsqltype="CF_SQL_VARCHAR"},
+                addrID = { value = #arguments.bean.getAddrID()#, cfsqltype="CF_SQL_NUMERIC"}
+            }
+            strOptions = {datasource=application.datasource};
+    
+            qResult = queryExecute(sql, strParams, strOptions);                      
+        } 
+        catch( any e )
+        {
+            boolSuccess = false;
+            throw( type="custom", message="Error in updateAddressRecord - addressDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+        
+        return boolSuccess;
+    }
+
+    public boolean function deleteAddressRecordByAddrID( required numeric addrID )
+    {
+        var boolSuccess = true;
+
+        try 
+        {
+            sql = "DELETE FROM bfc_Address WHERE AddrID = :addrID;";
+            strParams = { addrID = {value = #arguments.addrID#, cfsqltype="CF_SQL_NUMERIC"}};
+            strOptions = {datasource=application.datasource};
+            qDeleteAddress = queryExecute(sql, strParams, strOptions);                      
+        } 
+        catch( any e )
+        {
+            boolSucess = false;
+            throw( type="custom", message="Error in deleteAddressRecordByAddrID - addressDAO.cfc: #e.message#; detail=#e.detail#" );
+        }
+
+        return boolSuccess;
+    }
+ 
+}

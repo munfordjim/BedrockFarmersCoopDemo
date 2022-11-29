@@ -1,50 +1,51 @@
-<cfset testJSON = {"test": "test"} />
-<cfset cfhttpLoginResult = "" />
-<cfset loginResult = "" />
-<cfset cfhttpReportResult = "" />
-<cfset reportResult = "" />
-<cfset returnedToken = "" />
+<cfscript>
+    testJSON = {"test": "test"};
+    cfhttpLoginResult = "";
+    loginResult = "";
+    cfhttpReportResult = "";
+    reportResult = "";
+    returnedToken = "";
+    _report = "";
 
-<!--- 
-    Login (using dummy testJSON data) and get a token back used for authorization
-    on future calls.
---->
-<cfhttp url="https://www.cotton.org/rest/controller/APIroutes/login"
-    method="POST" result="cfhttpLoginResult">
-    <cfhttpparam type="header" name="Content-Type" value="application/json">
-    <cfhttpparam type="body" name="field" value="#serializeJSON(testJSON)#" />
-</cfhttp>
+    if ( isdefined("URL.report") and URL.report neq "" )
+    {
+        _report = encodeForHTML(URL.report);
+    }
 
-<!---<cfdump var="#cfhttpLoginResult.filecontent#"  label="login result">--->
-<cfset loginResult = DeserializeJSON(cfhttpLoginResult.filecontent) />
-<!---<cfdump var="#loginResult#" label="after derserialization" >--->
-<cfset returnedToken = "#loginResult.token#" />
-<!---<cfdump var="#returnedToken#" label="token" />--->
+    // Login (using dummy testJSON data) and get a token back used for authorization
+    // on future calls.
+    
+    httpService = new http(method="POST", charset="utf-8", url="https://www.cotton.org/rest/controller/APIroutes/login");
+    httpService.addParam(type="header", name="Content-Type", value="application/json");
+    httpService.addParam(type="body", name="field", value="#serializeJSON(testJSON)#");
+    cfhttpLoginResult = httpService.send().getPrefix();
 
-<cfif returnedToken neq "">
-    <!---<cfoutput>#returnedToken#</cfoutput>--->
-    <!---  
-        Call for a report (report/all is for all farmers, report/"lastname" is used
-        to filter by a last name)
-    --->
-    <cfif isdefined("URL.report") AND URL.report is "all">
-        <h2>REST API request results for ALL farmers at BFC</h2>
-    <cfelse>
-        <cfoutput><h2>REST API request for all farmers at BFC with the last name of "#url.report#"</h2></cfoutput>    
-    </cfif>
-    <cfhttp url="https://www.cotton.org/rest/controller/APIroutes/report/#URL.report#"
-        method="GET" result="cfhttpReportResult">
-        <cfhttpparam type="header" name="Content-Type" value="application/json">
-        <cfhttpparam type="header" name="authorization" value="#returnedToken#" />
-    </cfhttp>
+    loginResult = DeserializeJSON(cfhttpLoginResult.filecontent);
+    returnedToken = "#loginResult.token#";
 
-    <cfset reportResult = DeserializeJSON(cfhttpReportResult.filecontent, false) />
-    <cfloop index="i" from="1" to="#reportResult.recordCount#">
-        <cfoutput>
-            first name = #reportResult.FirstName[i]#<BR>
-            last name = #reportResult.LastName[i]#<BR>            
-            email address = #reportResult.EmailAddress[i]#<BR>            
-            phone number = #reportResult.PhoneNumber[i]#<BR><BR>            
-        </cfoutput>
-    </cfloop>    
-</cfif>
+    if ( returnedToken neq "")
+    {
+        if (  _report is "all" )
+        {
+            writeOutput("<h2>REST API request results for ALL farmers at BFC</h2>");
+        }
+        else
+        {
+            writeOutput('<h2>REST API request for all farmers at BFC with the last name of "#_report#"</h2>');
+        }
+
+        httpService = new http(method="GET", charset="utf-8", url="https://www.cotton.org/rest/controller/APIroutes/report/#_report#");
+        httpService.addParam(type="header", name="Content-Type", value="application/json");
+        httpService.addParam(type="header", name="authorization", value="#returnedToken#");
+        cfhttpReportResult = httpService.send().getPrefix();
+
+        reportResult = DeserializeJSON(cfhttpReportResult.filecontent, false);
+        for ( i = 1; i <= #reportResult.recordCount#; i++ )
+        {
+            writeOutput("first name = #reportResult.FirstName[i]#<BR>");
+            writeOutput("last name = #reportResult.LastName[i]#<BR>");
+            writeOutput("email address = #reportResult.EmailAddress[i]#<BR>");
+            writeOutput("phone number = #reportResult.PhoneNumber[i]#<BR><BR>");
+        }
+    }
+</cfscript>

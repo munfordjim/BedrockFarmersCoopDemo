@@ -20,13 +20,9 @@
         tags and functions (ie, cfqueryparam, canonicalize, regular expressions, etc.)</li>
 </ol>
 
-<p class="p-2">The idea of the demo and the use of node came from https://github.com/twbs/bootstrap-npm-starter.  Much thanks!  The file called "bfc_tables.sql" are the MS SQL Server tables used to run this demo app.
+<p class="p-2">The idea of the demo and the use of node came from https://github.com/twbs/bootstrap-npm-starter.  Much thanks!  The bacpac file called "BFC_backpac.bacpac" is the MS SQL Server tables and data used to run this demo application.  There is no login page as the data is completely insensitive. A working example of the demo can be found at:  https://www.cotton.org/jim_dev/test/bfc-demo/
 </p>
 
-# Usage
 
-Be sure to have [Node.js](https://nodejs.org/) installed before proceeding. **We recommend using Node's LTS releases, which is currently at v16.x. We only test our compiled CSS against v16.**
-
-cd bedrockfarmerscoopdemo
 
 

@@ -70,7 +70,7 @@ function onError( any Exception, string EventName )
 
 public boolean function onMissingTemplate( required string targetPage ) 
 { 
-    location url="https://www.cotton.org/jim_dev/test/bedrockfarmerscoopdemo2/missingTemplateHandler.cfm?missingtemplate=#URLEncodedFormat(arguments.targetpage)#" addtoken="no";
+    location url="https://www.cotton.org/jim_dev/test/bfc-demo/missingTemplateHandler.cfm?missingtemplate=#URLEncodedFormat(arguments.targetpage)#" addtoken="no";
 } 
 
     

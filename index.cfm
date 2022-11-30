@@ -8,8 +8,17 @@
                 <h3 class="p-2 mb-0">Select an option from the green bar above</h3>
                 <p class="p-2">
                     This app is a very simple demonstration of creating, reading, updating, and deleting (CRUD) 
-                    the basic information of a Farmer at Bedrock Farmers Coop.  
-                    The app uses object-oriented ColdFusion to accomplish this along utilizing the following technologies:
+                    the basic information of a Farmer at Bedrock Farmers Coop using MVC architecture and 
+                    object-oriented ColdFusion.  
+                    <BR><BR>
+                    Note - it should be understood that, while the addressBean component extends
+                    the farmerBean component (thus breaking the "is a" rule -  an address is NOT a farmer - HA!), 
+                    its intent is to show the use of inheritance in the application design.  Another demo could be 
+                    created using Mayberry RFD as its basis where a "policeOfficer" component could extend a "mayberryCitizen" 
+                    component and be a true "is a" relationship. A "family" component could also be used to show true 
+                    "has a" composition.
+                    <BR><BR>
+                    The following technologies were used to develop this demo application:
                 </p>
                 <ol>
                     <li>Bootstrap 5.2</li>
@@ -21,7 +30,7 @@
                     <li>MS Visual Studio Code</li>
                     <li>REST API concepts using ColdFusion (Reports)
                     <li>Protection against SQL injection (SQLi), Cross-Site Scripting (XSS), etc. using appropriate ColdFusion
-                        tags and functions (ie, cfqueryparam, canonicalize, regular expressions, etc.)</li>
+                        tags and functions (ie, cfqueryparam, canonicalize, CSRFGenerateToken, encoding, regular expressions, etc.)</li>
                 </ol>
             </div>
         </div>
